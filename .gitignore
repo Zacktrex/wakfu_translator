@@ -20,5 +20,4 @@ Thumbs.db
 *.log
 
 # Secrets / settings
-settings.py
 *.env
