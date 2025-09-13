@@ -1,6 +1,6 @@
 import threading
 from PyQt5.QtCore import Qt, QPoint, QRect, QTime
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QTextEdit, QLineEdit, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QMenu, QTextEdit, QLineEdit, QMessageBox
 from signals import ui_signals
 from workers.file_reader import file_reader_worker
 from workers.translator import translator_worker
@@ -47,9 +47,41 @@ class ChatTabs(QTabWidget):
             """
         )
 
+    def contextMenuEvent(self, event):
+        tab_index = self.tabBar().tabAt(event.pos())
+        if tab_index < 0:
+            return
+
+        tab_widget = self.widget(tab_index)
+        if not tab_widget.property("player_name"):
+            return  # only for player tabs
+
+        menu = QMenu(self)
+        langs = ["auto", "fr", "es", "de", "ja", "zh", "ru"]
+
+        for lang in langs:
+            action = menu.addAction(lang)
+            # use lambda to capture tab_widget, tab_index, lang
+            action.triggered.connect(
+                lambda _, l=lang, tw=tab_widget, idx=tab_index: self.update_tab_label(tw, idx, l)
+            )
+
+        menu.exec_(event.globalPos())
+
+   
+    # 👇 Add this method inside the class
+    def update_tab_label(self, tab_widget, tab_index, lang):
+        tab_widget.setProperty("source_lang", lang)
+        player_name = tab_widget.property("player_name") or "Player"
+        target_lang = "en"  # or read from settings if you want dynamic target
+        self.setTabText(tab_index, f"{player_name} [{lang}→{target_lang}]")
+
+
     def add_tab(self, name, ai_tab=False, player_name=None):
         text_edit = QTextEdit()
         text_edit.setReadOnly(True)
+        # Default per-tab source language
+        text_edit.setProperty("source_lang", "auto")
         if ai_tab:
             text_edit.setStyleSheet("""
                 background: rgba(20,20,40,180);
@@ -107,10 +139,19 @@ class ChatInputBar(QHBoxLayout):
         self.input_bar.returnPressed.connect(self.send_callback)
 
         self.add_tab_btn = QPushButton("+")
+        self.add_tab_btn.setToolTip("Add a new tab")
+
         self.minimize_btn = QPushButton("▼")
-        self.grab_btn = QPushButton("≡")
+        self.minimize_btn.setToolTip("Minimize/restore chat window")
+
+        self.grab_btn = QPushButton("🤚")
+        self.grab_btn.setToolTip("Drag the chat window")
+
         self.settings_btn = QPushButton("⚙")
+        self.settings_btn.setToolTip("Open settings")
+
         self.close_btn = QPushButton("✖")
+        self.close_btn.setToolTip("Close the chat window")
 
         for b in [self.add_tab_btn, self.minimize_btn, self.grab_btn, self.settings_btn, self.close_btn]:
             b.setFixedSize(22, 22)
@@ -223,11 +264,11 @@ class ChatUI(QWidget):
         text = self.input_bar_layout.input_bar.text().strip()
         if text.startswith('/w "'):
             try:
-                name = text.split('"')[1].strip() or "Player"
+                name = text.split('"')[1].strip() or "AI_Chat"
             except IndexError:
-                name = "Player"
+                name = "AI_Chat"
         else:
-            name = "Player"
+            name = "AI_Chat"
 
         self.tabs.add_tab(name, player_name=name)
         self.input_bar_layout.input_bar.clear()

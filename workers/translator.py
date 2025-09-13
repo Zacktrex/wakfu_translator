@@ -5,6 +5,8 @@ from settings import load_settings
 from translation.translator import translate_text_via_ollama
 from signals import ui_signals
 from workers.file_reader import message_queue
+from PyQt5.QtWidgets import QTextEdit
+from translation.parser import parse_line
 
 translated_lines = deque(maxlen=1000)
 
@@ -12,13 +14,6 @@ translated_lines = deque(maxlen=1000)
 
 # workers/translator.py
 def translator_worker(stop_event):
-    from settings import load_settings
-    from translation.translator import translate_text_via_ollama
-    from signals import ui_signals
-    from workers.file_reader import message_queue
-    from PyQt5.QtCore import QTime
-    from collections import deque
-
     settings = load_settings()
     translated_lines = deque(maxlen=1000)
 
@@ -28,13 +23,36 @@ def translator_worker(stop_event):
         except Exception:
             continue
 
-        sender, translated = translate_text_via_ollama(
-            line, settings.get("target_lang", "en"), settings.get("model_name", "")
-        )
-        if translated and line not in translated_lines:
-            translated_lines.append(line)
-            timestamp = QTime.currentTime().toString("HH:mm:ss")
-            ui_signals.append_text.emit(f"[{timestamp}] {sender or 'Unknown'}: {translated}")
+        timestamp = QTime.currentTime().toString("HH:mm:ss")
+
+        # For each player tab
+        for tab in ui_signals.chat_ui.tabs.findChildren(QTextEdit):
+            player_name = tab.property("player_name")
+            if not player_name:
+                continue  # skip General tab
+
+            sender, message = parse_line(line)
+            if not message:
+                continue
+
+            # Only translate if the sender matches the tab name
+            if sender and player_name.lower() in sender.lower():
+                tab_source_lang = tab.property("source_lang") or "en"  # <-- get per-tab
+                sender_name, translated = translate_text_via_ollama(
+                    line,
+                    target_lang=settings.get("target_lang", "en"),
+                    model_name=settings.get("model_name", ""),
+                    source_lang=tab_source_lang
+                )
+
+                if translated and line not in translated_lines:
+                    translated_lines.append(line)
+                    ui_signals.append_text_to_tab.emit(
+                        tab,
+                        f"[{timestamp}] {sender_name}: {translated}",
+                        True
+                    )
+
 
 
 
