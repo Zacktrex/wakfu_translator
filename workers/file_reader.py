@@ -47,7 +47,7 @@ def file_reader_worker(stop_event, settings, ui_signals):
                         # Send only to player tab matching the sender
                         for tab in ui_signals.chat_ui.tabs.findChildren(QTextEdit):
                             player_name = tab.property("player_name")
-                            if player_name and sender_name and player_name.lower() == sender_name.lower():
+                            if player_name and sender_name and player_name.lower() in sender_name.lower():
                                 ui_signals.append_text_to_tab.emit(tab, line, False)
 
             except Exception as e:
