@@ -2,6 +2,7 @@ import time
 from collections import deque
 from PyQt5.QtCore import QTime
 from settings import load_settings
+from translation.argostranslator import translate_text_via_argos
 from translation.translator import translate_text_via_ollama
 from signals import ui_signals
 from workers.file_reader import message_queue
@@ -9,7 +10,6 @@ from PyQt5.QtWidgets import QTextEdit
 from translation.parser import parse_line
 
 translated_lines = deque(maxlen=1000)
-
 
 
 # workers/translator.py
@@ -24,7 +24,6 @@ def translator_worker(stop_event):
             continue
 
         timestamp = QTime.currentTime().toString("HH:mm:ss")
-
         # For each player tab
         for tab in ui_signals.chat_ui.tabs.findChildren(QTextEdit):
             player_name = tab.property("player_name")
@@ -38,21 +37,21 @@ def translator_worker(stop_event):
             # Only translate if the sender matches the tab name
             if sender and player_name.lower() in sender.lower():
                 tab_source_lang = tab.property("source_lang") or "en"  # <-- get per-tab
-                sender_name, translated = translate_text_via_ollama(
+                # sender_name, translated = translate_text_via_ollama(
+                #     line,
+                #     target_lang=settings.get("target_lang", "en"),
+                #     model_name=settings.get("model_name", ""),
+                #     source_lang=tab_source_lang
+                # )
+                sender_name, translated = translate_text_via_argos(
                     line,
-                    target_lang=settings.get("target_lang", "en"),
-                    model_name=settings.get("model_name", ""),
-                    source_lang=tab_source_lang
+                    from_code=tab_source_lang,
+                    to_code=settings.get("target_lang", "en"),
+                    sender="",
                 )
 
                 if translated and line not in translated_lines:
                     translated_lines.append(line)
                     ui_signals.append_text_to_tab.emit(
-                        tab,
-                        f"[{timestamp}] {sender_name}: {translated}",
-                        True
+                        tab, f"[{timestamp}] {sender_name}: {translated}", True
                     )
-
-
-
-

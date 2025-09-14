@@ -1,34 +1,23 @@
 import threading
 from PyQt5.QtCore import Qt, QPoint, QRect, QTime
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QMenu, QTextEdit, QLineEdit, QMessageBox
+from PyQt5.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTabWidget,
+    QPushButton,
+    QMenu,
+    QTextEdit,
+    QLineEdit,
+    QMessageBox,
+)
 from signals import ui_signals
+from translation.argostranslator import translate_text_via_argos
 from workers.file_reader import file_reader_worker
 from workers.translator import translator_worker
 from settings import load_settings
 from ui.settings_dialog import SettingsDialog
 from translation.parser import parse_wakfu_colors
-from translation.translator import translate_text_via_ollama
-
-# Attempt to import ollama
-try:
-    import ollama
-    OLLAMA_AVAILABLE = True
-except Exception:
-    ollama = None
-    OLLAMA_AVAILABLE = False
-
-
-def translate_line(text, target_lang="en", model_name="", retries=2):
-    for _ in range(retries):
-        try:
-            _, translated = translate_text_via_ollama(text, target_lang, model_name)
-            if translated:
-                return translated
-        except Exception as e:
-            print("Translation attempt failed:", e)
-    return text  # fallback
-
-
 
 
 # --- Component: ChatTabs ---
@@ -63,12 +52,13 @@ class ChatTabs(QTabWidget):
             action = menu.addAction(lang)
             # use lambda to capture tab_widget, tab_index, lang
             action.triggered.connect(
-                lambda _, l=lang, tw=tab_widget, idx=tab_index: self.update_tab_label(tw, idx, l)
+                lambda _, l=lang, tw=tab_widget, idx=tab_index: self.update_tab_label(
+                    tw, idx, l
+                )
             )
 
         menu.exec_(event.globalPos())
 
-   
     # 👇 Add this method inside the class
     def update_tab_label(self, tab_widget, tab_index, lang):
         tab_widget.setProperty("source_lang", lang)
@@ -76,32 +66,37 @@ class ChatTabs(QTabWidget):
         target_lang = "en"  # or read from settings if you want dynamic target
         self.setTabText(tab_index, f"{player_name} [{lang}→{target_lang}]")
 
-
     def add_tab(self, name, ai_tab=False, player_name=None):
         text_edit = QTextEdit()
         text_edit.setReadOnly(True)
         # Default per-tab source language
-        text_edit.setProperty("source_lang", "auto")
+        text_edit.setProperty("source_lang", "en")
         if ai_tab:
-            text_edit.setStyleSheet("""
+            text_edit.setStyleSheet(
+                """
                 background: rgba(20,20,40,180);
                 border: none; border-radius: 4px; padding: 4px;
                 font-weight: bold; font-size: 14px;
-            """)
+            """
+            )
             text_edit.setProperty("is_ai_tab", True)
         elif player_name:
-            text_edit.setStyleSheet("""
+            text_edit.setStyleSheet(
+                """
                 background: rgba(30,30,50,180);
                 border: none; border-radius: 4px; padding: 4px;
                 font-weight: bold; font-size: 14px;
-            """)
+            """
+            )
             text_edit.setProperty("player_name", player_name)
         else:
-            text_edit.setStyleSheet("""
+            text_edit.setStyleSheet(
+                """
                 background: rgba(0,0,0,120);
                 border: none; border-radius: 4px; padding: 4px;
                 font-weight: 900; font-size: 16px;
-            """)
+            """
+            )
         self.addTab(text_edit, name)
         self.setCurrentWidget(text_edit)
         return text_edit
@@ -116,9 +111,9 @@ class ChatTabs(QTabWidget):
         if tab_widget.property("is_ai_tab") and not is_ai:
             return
         try:
-            translated = translate_line(message, self.settings.get("target_lang", "en"),
-                                        self.settings.get("model_name", ""))
-            safe = parse_wakfu_colors(translated)
+            # translated = translate_line(message, self.settings.get("target_lang", "en"),
+            #                             self.settings.get("model_name", ""))
+            safe = parse_wakfu_colors(message)
             tab_widget.append(safe)
             tab_widget.ensureCursorVisible()
         except Exception as e:
@@ -134,7 +129,7 @@ class ChatInputBar(QHBoxLayout):
 
         self.input_bar = QLineEdit()
         self.input_bar.setPlaceholderText(
-            "use /chat for AI replies related to chat or directly talk to AI"
+            "/w player name then click + to add a player tab or type message and press Enter to see translation"
         )
         self.input_bar.returnPressed.connect(self.send_callback)
 
@@ -153,15 +148,23 @@ class ChatInputBar(QHBoxLayout):
         self.close_btn = QPushButton("✖")
         self.close_btn.setToolTip("Close the chat window")
 
-        for b in [self.add_tab_btn, self.minimize_btn, self.grab_btn, self.settings_btn, self.close_btn]:
+        for b in [
+            self.add_tab_btn,
+            self.minimize_btn,
+            self.grab_btn,
+            self.settings_btn,
+            self.close_btn,
+        ]:
             b.setFixedSize(22, 22)
-            b.setStyleSheet("""
+            b.setStyleSheet(
+                """
                 QPushButton {
                     background: rgba(40,40,40,180);
                     color: white; border: none; border-radius: 4px;
                 }
                 QPushButton:hover { background: rgba(80,80,80,230); }
-            """)
+            """
+            )
 
         self.addWidget(self.input_bar, 1)
         self.addWidget(self.add_tab_btn)
@@ -205,10 +208,12 @@ class ChatUI(QWidget):
         self.input_bar_layout = ChatInputBar(self, self.send_message)
         layout.addLayout(self.input_bar_layout)
 
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QWidget { background: rgba(0,0,0,120); color: white; font-family: Consolas, monospace; font-size: 12px; }
             QLineEdit { background: rgba(30,30,30,160); border: 1px solid white; padding: 4px; border-radius: 5px; color: white; }
-        """)
+        """
+        )
 
         self.resize(600, self.normal_height)
 
@@ -230,33 +235,49 @@ class ChatUI(QWidget):
 
         # Start workers
         self._stop_event = threading.Event()
-        threading.Thread(target=file_reader_worker, args=(self._stop_event, self.settings, ui_signals), daemon=True).start()
-        threading.Thread(target=translator_worker, args=(self._stop_event,), daemon=True).start()
-        threading.Thread(target=self._check_ollama_and_models, daemon=True).start()
+        threading.Thread(
+            target=file_reader_worker,
+            args=(self._stop_event, self.settings, ui_signals),
+            daemon=True,
+        ).start()
+        threading.Thread(
+            target=translator_worker, args=(self._stop_event,), daemon=True
+        ).start()
+        # threading.Thread(target=self._check_ollama_and_models, daemon=True).start()
 
     # --- Message Handling ---
-    def append_chat(self, message, tab_widget=None):
-        if tab_widget is None:
-            tab_widget = self.tabs.currentWidget()
-        if not tab_widget:
-            return
-        if tab_widget.property("is_ai_tab"):
-            return
+    def append_chat(self, message):
         try:
             html = parse_wakfu_colors(message)
-            scrollbar = tab_widget.verticalScrollBar()
-            at_bottom = scrollbar.value() == scrollbar.maximum()
 
-            max_lines = 1000
-            if tab_widget.document().blockCount() > max_lines:
-                cursor = tab_widget.textCursor()
-                cursor.movePosition(cursor.Start)
-                cursor.select(cursor.LineUnderCursor)
-                cursor.removeSelectedText()
-                cursor.deleteChar()
-            tab_widget.append(html)
-            if at_bottom:
-                tab_widget.ensureCursorVisible()
+            for i in range(self.tabs.count()):
+                tab_name = self.tabs.tabText(i)
+                if tab_name != "General" and tab_name.lower() not in message.lower():
+                    continue
+
+                tab_widget = self.tabs.widget(i)
+
+                print(tab_name, message)
+
+                if not tab_widget or tab_widget.property("is_ai_tab"):
+                    continue
+
+                scrollbar = tab_widget.verticalScrollBar()
+                at_bottom = scrollbar.value() == scrollbar.maximum()
+
+                max_lines = 1000
+                if tab_widget.document().blockCount() > max_lines:
+                    cursor = tab_widget.textCursor()
+                    cursor.movePosition(cursor.Start)
+                    cursor.select(cursor.LineUnderCursor)
+                    cursor.removeSelectedText()
+                    cursor.deleteChar()
+
+                tab_widget.append(html)
+
+                if at_bottom:
+                    tab_widget.ensureCursorVisible()
+
         except Exception as e:
             print("Append error:", e)
 
@@ -264,11 +285,11 @@ class ChatUI(QWidget):
         text = self.input_bar_layout.input_bar.text().strip()
         if text.startswith('/w "'):
             try:
-                name = text.split('"')[1].strip() or "AI_Chat"
+                name = text.split('"')[1].strip() or "YOU"
             except IndexError:
-                name = "AI_Chat"
+                name = "YOU"
         else:
-            name = "AI_Chat"
+            name = "YOU"
 
         self.tabs.add_tab(name, player_name=name)
         self.input_bar_layout.input_bar.clear()
@@ -281,40 +302,26 @@ class ChatUI(QWidget):
         if not current_tab:
             return
 
-        current_time = QTime.currentTime().toString("HH:mm:ss")
-        tab_content = current_tab.toPlainText()
-        is_ai_tab = bool(current_tab.property("is_ai_tab"))
+        current_index = self.tabs.currentIndex()
+        tab_name = self.tabs.tabText(current_index)
 
-        if is_ai_tab:
-            threading.Thread(target=self._ai_reply_worker, args=(text, current_tab), daemon=True).start()
-            current_tab.append(f"[{current_time}] You: {text}")
-        elif text.startswith("/chat"):
-            user_msg = text[5:].strip()
-            threading.Thread(target=self._ai_reply_worker,
-                             args=(user_msg + "\n\nChat context:\n" + tab_content, current_tab), daemon=True).start()
-            current_tab.append(f"[{current_time}] You (sent full chat): {user_msg}")
-        else:
-            threading.Thread(target=self._ai_reply_worker, args=(text, current_tab), daemon=True).start()
-            current_tab.append(f"[{current_time}] You: {text}")
+        current_time = QTime.currentTime().toString("HH:mm:ss")
+        is_ai_tab = bool(current_tab.property("is_ai_tab"))
 
         self.input_bar_layout.input_bar.clear()
 
-    # --- AI Reply ---
-    def _ai_reply_worker(self, user_msg, tab_widget):
-        try:
-            if not OLLAMA_AVAILABLE:
-                reply = "[Ollama not available]"
-            else:
-                model_name = self.settings.get("model_name", "")
-                prompt = f"You are a helpful assistant. Reply concisely:\n\n{user_msg}"
-                resp = ollama.chat(model=model_name, messages=[{"role": "user", "content": prompt}])
-                reply = resp.get("message", {}).get("content", "").strip()
+        # If it's NOT the "General" tab, translate message
+        if tab_name != "General":
+            try:
+                target_lang = current_tab.property("source_lang") or "en"
+                source_lang = self.settings.get("target_lang", "en")
 
-            timestamp = QTime.currentTime().toString("HH:mm:ss")
-            if tab_widget is not None:
-                ui_signals.append_text_to_tab.emit(tab_widget, f"[{timestamp}] AI: {reply}", True)
-        except Exception as e:
-            print("Error in _ai_reply_worker:", e)
+                _, text = translate_text_via_argos(text, source_lang, target_lang)
+            except Exception as e:
+                print("Translation error:", e)
+
+        # Now send to the current tab
+        current_tab.append(f"[{current_time}] You : {text}")
 
     # --- Settings ---
     def open_settings(self):
@@ -377,64 +384,58 @@ class ChatUI(QWidget):
             self.start_geom = self.geometry()
 
     def get_edge_at_pos(self, pos):
-        x, y, w, h, m = pos.x(), pos.y(), self.width(), self.height(), self.resize_margin
-        if x <= m and y <= m: return "top-left"
-        if x >= w - m and y <= m: return "top-right"
-        if x <= m and y >= h - m: return "bottom-left"
-        if x >= w - m and y >= h - m: return "bottom-right"
-        if x <= m: return "left"
-        if x >= w - m: return "right"
-        if y <= m: return "top"
-        if y >= h - m: return "bottom"
+        x, y, w, h, m = (
+            pos.x(),
+            pos.y(),
+            self.width(),
+            self.height(),
+            self.resize_margin,
+        )
+        if x <= m and y <= m:
+            return "top-left"
+        if x >= w - m and y <= m:
+            return "top-right"
+        if x <= m and y >= h - m:
+            return "bottom-left"
+        if x >= w - m and y >= h - m:
+            return "bottom-right"
+        if x <= m:
+            return "left"
+        if x >= w - m:
+            return "right"
+        if y <= m:
+            return "top"
+        if y >= h - m:
+            return "bottom"
         return None
 
     def toggle_minimize(self):
         if not self.is_minimized:
             self.normal_height = self.height()
             stacked = self.tabs.findChild(QWidget, "qt_tabwidget_stackedwidget")
-            if stacked: stacked.setVisible(False)
+            if stacked:
+                stacked.setVisible(False)
             self.tabs.tabBar().setVisible(False)
             spacing = 8
-            new_height = self.input_bar_layout.input_bar.sizeHint().height() + max(
-                self.input_bar_layout.add_tab_btn.height(),
-                self.input_bar_layout.minimize_btn.height(),
-                self.input_bar_layout.grab_btn.height(),
-                self.input_bar_layout.settings_btn.height(),
-                self.input_bar_layout.close_btn.height()
-            ) + spacing
+            new_height = (
+                self.input_bar_layout.input_bar.sizeHint().height()
+                + max(
+                    self.input_bar_layout.add_tab_btn.height(),
+                    self.input_bar_layout.minimize_btn.height(),
+                    self.input_bar_layout.grab_btn.height(),
+                    self.input_bar_layout.settings_btn.height(),
+                    self.input_bar_layout.close_btn.height(),
+                )
+                + spacing
+            )
             self.resize(self.width(), new_height)
             self.is_minimized = True
             self.input_bar_layout.minimize_btn.setText("▼")
         else:
             stacked = self.tabs.findChild(QWidget, "qt_tabwidget_stackedwidget")
-            if stacked: stacked.setVisible(True)
+            if stacked:
+                stacked.setVisible(True)
             self.tabs.tabBar().setVisible(True)
             self.resize(self.width(), self.normal_height)
             self.is_minimized = False
             self.input_bar_layout.minimize_btn.setText("▲")
-
-    # --- Ollama ---
-    def _check_ollama_and_models(self):
-        model_name = self.settings.get("model_name", "")
-        if not OLLAMA_AVAILABLE:
-            ui_signals.status_text.emit("⚠️ Ollama not installed. pip install ollama")
-            return
-        try:
-            available = ollama.list()
-            model_names = [m.get("name", str(m)) if isinstance(m, dict) else str(m) for m in available]
-        except Exception as e:
-            ui_signals.status_text.emit(f"⚠️ Cannot reach Ollama server: {e}")
-            return
-
-        if model_name:
-            if model_name not in model_names:
-                ui_signals.status_text.emit(f"Model '{model_name}' not found. Pulling...")
-                try:
-                    ollama.pull(model_name)
-                    ui_signals.status_text.emit(f"Model pull completed: {model_name}")
-                except Exception as e:
-                    ui_signals.status_text.emit(f"⚠️ Failed to pull model '{model_name}': {e}")
-            else:
-                ui_signals.status_text.emit(f"Model '{model_name}' is available locally.")
-        else:
-            ui_signals.status_text.emit("No model configured. Set a model in Settings.")
