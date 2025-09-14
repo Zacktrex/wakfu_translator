@@ -24,7 +24,6 @@ def translator_worker(stop_event):
             continue
 
         timestamp = QTime.currentTime().toString("HH:mm:ss")
-
         # For each player tab
         for tab in ui_signals.chat_ui.tabs.findChildren(QTextEdit):
             player_name = tab.property("player_name")

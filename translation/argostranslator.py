@@ -43,7 +43,6 @@ def translate_text_via_argos(line, from_code="en", to_code="es", sender="Unknown
 
     try:
         # Ensure the translation model is installed
-        print("Ensuring Argos model is installed...", from_code, to_code)
         ensure_argos_model(from_code, to_code)
         sender, message = parse_line(line)
         # Perform translation

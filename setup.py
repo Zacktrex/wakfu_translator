@@ -9,7 +9,6 @@ MAIN_SCRIPT = "main.py"  # your entry point
 # Required packages for the project
 PACKAGES = [
     "PyQt5",
-    "ollama",
     "watchdog",
     "pyinstaller"  # added
     "argostranslate"
