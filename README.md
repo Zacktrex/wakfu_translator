@@ -12,6 +12,3 @@ A Python-based Wakfu translator with a simple UI.
    ```bash
    # First-time setup
    python setup.py install
-
-   # Start the application
-   python main.py
