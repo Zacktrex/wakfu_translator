@@ -57,7 +57,7 @@ class ChatTabs(QTabWidget):
             return  # only for player tabs
 
         menu = QMenu(self)
-        langs = ["auto", "fr", "es", "de", "ja", "zh", "ru"]
+        langs = ["en", "fr", "es", "de", "ja", "zh", "ru", "it", "ko", "pt", "de"]
 
         for lang in langs:
             action = menu.addAction(lang)

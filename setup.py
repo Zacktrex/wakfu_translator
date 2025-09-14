@@ -9,9 +9,9 @@ MAIN_SCRIPT = "main.py"  # your entry point
 # Required packages for the project
 PACKAGES = [
     "PyQt5",
-    "ollama",
     "watchdog",
-    "pyinstaller"  # added
+    "pyinstaller",  # added
+    "argostranslate"
 ]
 
 def run_command(cmd):
@@ -49,3 +49,5 @@ if __name__ == "__main__":
     create_venv()
     install_packages()
     run_main_script()
+
+    # pyinstaller --onefile --noconsole main.py

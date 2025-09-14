@@ -26,14 +26,6 @@ class SettingsDialog(QDialog):
         chat_layout.addWidget(self.chat_browse)
         layout.addLayout(chat_layout)
 
-        # Model name input
-        model_layout = QHBoxLayout()
-        model_label = QLabel("Model Name:")
-        self.model_input = QLineEdit(self.settings.get("model_name", ""))
-        model_layout.addWidget(model_label)
-        model_layout.addWidget(self.model_input)
-        layout.addLayout(model_layout)
-
         # Transparency
         trans_layout = QHBoxLayout()
         trans_label = QLabel("Transparency:")
