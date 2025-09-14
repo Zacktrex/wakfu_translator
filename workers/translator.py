@@ -3,7 +3,6 @@ from collections import deque
 from PyQt5.QtCore import QTime
 from settings import load_settings
 from translation.argostranslator import translate_text_via_argos
-from translation.translator import translate_text_via_ollama
 from signals import ui_signals
 from workers.file_reader import message_queue
 from PyQt5.QtWidgets import QTextEdit
@@ -37,12 +36,6 @@ def translator_worker(stop_event):
             # Only translate if the sender matches the tab name
             if sender and player_name.lower() in sender.lower():
                 tab_source_lang = tab.property("source_lang") or "en"  # <-- get per-tab
-                # sender_name, translated = translate_text_via_ollama(
-                #     line,
-                #     target_lang=settings.get("target_lang", "en"),
-                #     model_name=settings.get("model_name", ""),
-                #     source_lang=tab_source_lang
-                # )
                 sender_name, translated = translate_text_via_argos(
                     line,
                     from_code=tab_source_lang,

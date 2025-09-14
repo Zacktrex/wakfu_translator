@@ -10,7 +10,7 @@ MAIN_SCRIPT = "main.py"  # your entry point
 PACKAGES = [
     "PyQt5",
     "watchdog",
-    "pyinstaller"  # added
+    "pyinstaller",  # added
     "argostranslate"
 ]
 
@@ -49,3 +49,5 @@ if __name__ == "__main__":
     create_venv()
     install_packages()
     run_main_script()
+
+    # pyinstaller --onefile --noconsole main.py

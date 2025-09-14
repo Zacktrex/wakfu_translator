@@ -21,3 +21,11 @@ Thumbs.db
 
 # Secrets / settings
 *.env
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.pyinstaller/
+*.spec
+*.json
