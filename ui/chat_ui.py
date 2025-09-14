@@ -116,9 +116,9 @@ class ChatTabs(QTabWidget):
         if tab_widget.property("is_ai_tab") and not is_ai:
             return
         try:
-            translated = translate_line(message, self.settings.get("target_lang", "en"),
-                                        self.settings.get("model_name", ""))
-            safe = parse_wakfu_colors(translated)
+            # translated = translate_line(message, self.settings.get("target_lang", "en"),
+            #                             self.settings.get("model_name", ""))
+            safe = parse_wakfu_colors(message)
             tab_widget.append(safe)
             tab_widget.ensureCursorVisible()
         except Exception as e:

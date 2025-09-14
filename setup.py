@@ -12,6 +12,7 @@ PACKAGES = [
     "ollama",
     "watchdog",
     "pyinstaller"  # added
+    "argostranslate"
 ]
 
 def run_command(cmd):
