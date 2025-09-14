@@ -98,7 +98,7 @@ class SettingsDialog(QDialog):
 
     def save(self):
         self.settings["chat_log"] = self.chat_input.text().strip()
-        self.settings["model_name"] = self.model_input.text().strip()
+        # self.settings["model_name"] = self.model_input.text().strip()
         self.settings["transparency"] = self.transparency_input.value()
         self.settings["check_interval"] = self.interval_input.value()
 

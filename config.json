@@ -3,6 +3,5 @@
     "transparency": 1.0,
     "check_interval": 2,
     "check_last_lines": 40,
-    "target_lang": "en",
-    "model_name": "qwen2.5:0.5b"
+    "target_lang": "en"
 }
