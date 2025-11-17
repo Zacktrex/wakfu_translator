@@ -14,6 +14,12 @@ import os
 import sys
 import tempfile
 from shutil import move
+from constants import (
+    WINDOW_OPACITY_DEFAULT,
+    DEFAULT_CHECK_INTERVAL,
+    DEFAULT_CHECK_LAST_LINES,
+    DEFAULT_TARGET_LANGUAGE
+)
 
 def resource_path(relative_path: str) -> str:
     """
@@ -31,11 +37,11 @@ SETTINGS_FILE = resource_path("config.json")
 
 DEFAULT_SETTINGS = {
     "chat_log": "",
-    "transparency": 0.85,
-    "check_interval": 2,  # seconds between file checks
-    "check_last_lines": 40,
-    "target_lang": "en",
-    "model_name": "qwen2.5:0.5b",
+    "transparency": WINDOW_OPACITY_DEFAULT,
+    "check_interval": DEFAULT_CHECK_INTERVAL,
+    "check_last_lines": DEFAULT_CHECK_LAST_LINES,
+    "target_lang": DEFAULT_TARGET_LANGUAGE,
+    "tracked_players": {},  # {player_name: language_code}
 }
 
 
@@ -123,3 +129,23 @@ def save_settings(settings: dict) -> None:
         # fallback plain write
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=4, ensure_ascii=False)
+
+
+def load_tracked_players() -> dict:
+    """
+    Load tracked players from config.json.
+    Returns dict: {player_name: language_code}
+    Example: {"PlayerOne": "fr", "PlayerTwo": "es"}
+    """
+    settings = load_settings()
+    return settings.get("tracked_players", {})
+
+
+def save_tracked_players(tracked_players: dict) -> None:
+    """
+    Save tracked players dict to config.json.
+    """
+    settings = load_settings()
+    settings["tracked_players"] = tracked_players
+    save_settings(settings)
+

@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (
     QComboBox, QDoubleSpinBox, QSpinBox, QFileDialog
 )
 from settings import load_settings, save_settings
+from constants import SUPPORTED_LANGUAGES
 
 
 class SettingsDialog(QDialog):
@@ -63,8 +64,7 @@ class SettingsDialog(QDialog):
         lang_label = QLabel("Target Language:")
         self.lang_input = QComboBox()
         self.lang_input.setEditable(True)
-        langs = ["en", "fr", "es", "de", "ja", "ko", "zh"]
-        self.lang_input.addItems(langs)
+        self.lang_input.addItems(SUPPORTED_LANGUAGES)
         self.lang_input.setCurrentText(self.settings.get("target_lang", "en"))
         lang_layout.addWidget(lang_label)
         lang_layout.addWidget(self.lang_input)

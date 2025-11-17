@@ -15,9 +15,18 @@ from signals import ui_signals
 from translation.argostranslator import translate_text_via_argos
 from workers.file_reader import file_reader_worker
 from workers.translator import translator_worker
-from settings import load_settings
+from settings import load_settings, load_tracked_players, save_tracked_players
 from ui.settings_dialog import SettingsDialog
+from ui.player_dialog import PlayerDialog
 from translation.parser import parse_wakfu_colors
+from constants import (
+    SUPPORTED_LANGUAGES,
+    MAX_CHAT_LINES,
+    WINDOW_RESIZE_MARGIN,
+    WINDOW_DEFAULT_WIDTH,
+    WINDOW_DEFAULT_HEIGHT,
+    THREAD_SHUTDOWN_TIMEOUT
+)
 
 
 # --- Component: ChatTabs ---
@@ -28,6 +37,7 @@ class ChatTabs(QTabWidget):
         self.setTabsClosable(True)
         self.setMovable(True)
         self.tabCloseRequested.connect(self.close_tab)
+        self._tab_cache = []  # Cache for quick tab lookup
         self.setStyleSheet(
             """
             QTabWidget::pane { background: rgba(0,0,0,0); border: none; }
@@ -46,7 +56,7 @@ class ChatTabs(QTabWidget):
             return  # only for player tabs
 
         menu = QMenu(self)
-        langs = ["en", "fr", "es", "de", "ja", "zh", "ru", "it", "ko", "pt", "de"]
+        langs = SUPPORTED_LANGUAGES
 
         for lang in langs:
             action = menu.addAction(lang)
@@ -63,7 +73,7 @@ class ChatTabs(QTabWidget):
     def update_tab_label(self, tab_widget, tab_index, lang):
         tab_widget.setProperty("source_lang", lang)
         player_name = tab_widget.property("player_name") or "Player"
-        target_lang = "en"  # or read from settings if you want dynamic target
+        target_lang = self.settings.get("target_lang", "en")  # read from settings
         self.setTabText(tab_index, f"{player_name} [{lang}→{target_lang}]")
 
     def add_tab(self, name, ai_tab=False, player_name=None):
@@ -99,6 +109,7 @@ class ChatTabs(QTabWidget):
             )
         self.addTab(text_edit, name)
         self.setCurrentWidget(text_edit)
+        self._update_tab_cache()  # Update cache when tab added
         return text_edit
 
     def close_tab(self, index):
@@ -106,6 +117,15 @@ class ChatTabs(QTabWidget):
             QMessageBox.information(self, "Notice", "Cannot close General tab")
             return
         self.removeTab(index)
+        self._update_tab_cache()  # Update cache when tab closed
+
+    def _update_tab_cache(self):
+        """Update the cached list of tabs"""
+        self._tab_cache = [self.widget(i) for i in range(self.count())]
+
+    def get_cached_tabs(self):
+        """Get cached tab list instead of using findChildren"""
+        return self._tab_cache
 
     def append_to_tab(self, tab_widget, message, is_ai=False):
         if tab_widget.property("is_ai_tab") and not is_ai:
@@ -145,6 +165,9 @@ class ChatInputBar(QHBoxLayout):
         self.settings_btn = QPushButton("⚙")
         self.settings_btn.setToolTip("Open settings")
 
+        self.players_btn = QPushButton("👥")
+        self.players_btn.setToolTip("Manage tracked players")
+
         self.close_btn = QPushButton("✖")
         self.close_btn.setToolTip("Close the chat window")
 
@@ -153,6 +176,7 @@ class ChatInputBar(QHBoxLayout):
             self.minimize_btn,
             self.grab_btn,
             self.settings_btn,
+            self.players_btn,
             self.close_btn,
         ]:
             b.setFixedSize(22, 22)
@@ -171,6 +195,7 @@ class ChatInputBar(QHBoxLayout):
         self.addWidget(self.minimize_btn)
         self.addWidget(self.grab_btn)
         self.addWidget(self.settings_btn)
+        self.addWidget(self.players_btn)
         self.addWidget(self.close_btn)
 
 
@@ -179,6 +204,7 @@ class ChatUI(QWidget):
     def __init__(self):
         super().__init__()
         self.settings = load_settings()
+        self.tracked_players = load_tracked_players()
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         try:
             self.setWindowOpacity(float(self.settings.get("transparency", 0.85)))
@@ -192,9 +218,9 @@ class ChatUI(QWidget):
         self.resize_dir = None
         self.drag_start = QPoint()
         self.start_geom = QRect()
-        self.resize_margin = 8
+        self.resize_margin = WINDOW_RESIZE_MARGIN
         self.is_minimized = False
-        self.normal_height = 280
+        self.normal_height = WINDOW_DEFAULT_HEIGHT
 
         # --- Layout ---
         layout = QVBoxLayout(self)
@@ -215,7 +241,7 @@ class ChatUI(QWidget):
         """
         )
 
-        self.resize(600, self.normal_height)
+        self.resize(WINDOW_DEFAULT_WIDTH, self.normal_height)
 
         # Connect buttons
         self.input_bar_layout.add_tab_btn.clicked.connect(self.handle_add_tab)
@@ -223,6 +249,7 @@ class ChatUI(QWidget):
         self.input_bar_layout.grab_btn.mousePressEvent = self.grab_button_pressed
         self.input_bar_layout.minimize_btn.clicked.connect(self.toggle_minimize)
         self.input_bar_layout.settings_btn.clicked.connect(self.open_settings)
+        self.input_bar_layout.players_btn.clicked.connect(self.open_player_management)
 
         # Default tab
         self.tabs.add_tab("General")
@@ -232,17 +259,23 @@ class ChatUI(QWidget):
         ui_signals.status_text.connect(self.append_chat)
         ui_signals.append_text_to_tab.connect(self.tabs.append_to_tab)
         ui_signals.chat_ui = self
+        
+        # Connect tracked players update signal to worker
+        from workers.file_reader import update_tracked_players
+        ui_signals.tracked_players_updated.connect(update_tracked_players)
 
         # Start workers
         self._stop_event = threading.Event()
-        threading.Thread(
+        self.file_reader_thread = threading.Thread(
             target=file_reader_worker,
             args=(self._stop_event, self.settings, ui_signals),
-            daemon=True,
-        ).start()
-        threading.Thread(
-            target=translator_worker, args=(self._stop_event,), daemon=True
-        ).start()
+            daemon=False,
+        )
+        self.translator_thread = threading.Thread(
+            target=translator_worker, args=(self._stop_event,), daemon=False
+        )
+        self.file_reader_thread.start()
+        self.translator_thread.start()
         # threading.Thread(target=self._check_ollama_and_models, daemon=True).start()
 
     # --- Message Handling ---
@@ -265,7 +298,7 @@ class ChatUI(QWidget):
                 scrollbar = tab_widget.verticalScrollBar()
                 at_bottom = scrollbar.value() == scrollbar.maximum()
 
-                max_lines = 1000
+                max_lines = MAX_CHAT_LINES
                 if tab_widget.document().blockCount() > max_lines:
                     cursor = tab_widget.textCursor()
                     cursor.movePosition(cursor.Start)
@@ -329,6 +362,14 @@ class ChatUI(QWidget):
         if dlg.exec_():
             self.settings = load_settings()
             self.append_chat("✅ Settings updated.")
+
+    def open_player_management(self):
+        """Open player tracking management dialog"""
+        dlg = PlayerDialog(self)
+        if dlg.exec_():
+            self.tracked_players = load_tracked_players()
+            ui_signals.tracked_players_updated.emit(self.tracked_players)
+            self.append_chat("✅ Player tracking updated.")
 
     # --- Drag / Resize ---
     def mousePressEvent(self, event):
@@ -439,3 +480,15 @@ class ChatUI(QWidget):
             self.resize(self.width(), self.normal_height)
             self.is_minimized = False
             self.input_bar_layout.minimize_btn.setText("▲")
+
+    def closeEvent(self, event):
+        """Properly shutdown worker threads on app close"""
+        self._stop_event.set()
+        
+        # Wait for threads to finish with timeout
+        if hasattr(self, 'file_reader_thread'):
+            self.file_reader_thread.join(timeout=THREAD_SHUTDOWN_TIMEOUT)
+        if hasattr(self, 'translator_thread'):
+            self.translator_thread.join(timeout=THREAD_SHUTDOWN_TIMEOUT)
+        
+        event.accept()
