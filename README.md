@@ -1,123 +1,134 @@
-# Create an English Quick Start TXT with note that Steam isn't required and how to find wakfu_chat.log anywhere
-content = r"""Wakfu Chat Translator — Quick Start (Windows, Any Launcher)
-==============================================================
+# Wakfu Chat Translator — Quick Start
 
-This short guide complements the full README. It shows how to download the project, open a terminal, install dependencies, run the app, and point it to your Wakfu chat log.
+This guide shows how to set up and run the app, and how to locate your `wakfu_chat.log`.
 
---------------------------------------------------------------
-A) Prerequisites
---------------------------------------------------------------
-- Windows, Wakfu installed (Steam OR Ankama Launcher OR other). *
-- Python 3.11 (recommended for compatibility).
-  Check installed versions:    py -0p
-  If 3.11 is missing:          winget install -e --id Python.Python.3.11
+> ⚠️ Steam is **NOT required**. This works with any Wakfu installation (Ankama Launcher or others).
+> The only requirement is locating `wakfu_chat.log`.
 
-(*) Not limited to Steam. The key is finding the file named **wakfu_chat.log** on your machine.
+---
 
---------------------------------------------------------------
-B) Download the project from GitHub
---------------------------------------------------------------
-1) Open the repository page on GitHub.
-2) Click **Code** → **Download ZIP**.
-3) Extract the ZIP (right–click → **Extract All…**).
-4) Enter the extracted folder (e.g., `wakfu_translator-main`).
+## 1. Prerequisites
 
---------------------------------------------------------------
-C) Open a terminal in the project folder
---------------------------------------------------------------
-Option 1 — Context menu:
-  Right–click inside the folder → **Open in Terminal** (or **Open in PowerShell**).
+* Windows
+* Wakfu installed (any launcher)
+* Python 3.11
 
-Option 2 — Explorer address bar:
-  Type `powershell` and press Enter.
+Check Python:
 
-Make sure the prompt shows the project path.
+```
+py -0p
+```
 
---------------------------------------------------------------
-D) Create and activate the virtual environment (3.11)
---------------------------------------------------------------
+Install if missing:
+
+```
+winget install -e --id Python.Python.3.11
+```
+
+---
+
+## 2. Download Project
+
+* Go to GitHub repo
+* Click **Code → Download ZIP**
+* Extract and open the folder
+
+---
+
+## 3. Open Terminal
+
+Right-click inside the folder → **Open in Terminal**
+
+---
+
+## 4. Setup Virtual Environment
+
+```
 py -3.11 -m venv .venv311
+```
 
-# If you're in PowerShell, allow scripts ONLY for this session:
+PowerShell:
+
+```
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv311\Scripts\Activate.ps1
-python --version   # should display 3.11.x
+```
 
-(If using CMD: ".venv311\Scripts\activate.bat")
+---
 
---------------------------------------------------------------
-E) Install dependencies
---------------------------------------------------------------
+## 5. Install Dependencies
+
+```
 python -m pip install --upgrade pip
-python -m pip install argostranslate
-python -m pip install PyQt5
+pip install argostranslate PyQt5
+```
 
-# Install a language model (example EN→ES)
-python -c "import argostranslate.package as p; p.update_package_index(); m=[x for x in p.get_available_packages() if x.from_code=='en' and x.to_code=='es'][0]; p.install_from_path(m.download()); print('EN→ES model installed')"
+Install language model (example EN→ES):
 
---------------------------------------------------------------
-F) Run the application (ALWAYS with the venv’s python)
---------------------------------------------------------------
-PowerShell:
-  & ".\.venv311\Scripts\python.exe" .\main.py
+```
+python -c "import argostranslate.package as p; p.update_package_index(); m=[x for x in p.get_available_packages() if x.from_code=='en' and x.to_code=='es'][0]; p.install_from_path(m.download())"
+```
 
-CMD:
-  ".venv311\Scripts\python.exe" main.py
+---
 
---------------------------------------------------------------
-G) Configure the Chat Log Path (then restart the app)
---------------------------------------------------------------
-In **Settings** → **Chat Log Path**, select your real **wakfu_chat.log** file.
+## 6. Run the App
 
-Typical locations:
-• Steam:
-  C:\Program Files (x86)\Steam\steamapps\common\Wakfu\preferences\logs\wakfu_chat.log
+```
+.\.venv311\Scripts\python.exe main.py
+```
 
-• Ankama Launcher / other installs:
-  The path may differ. Use a search to locate the file:
+---
 
-  PowerShell (search drive C:):
-    Get-ChildItem C:\ -Recurse -File -Filter wakfu_chat.log -ErrorAction SilentlyContinue |
-      Select-Object FullName, LastWriteTime, Length
+## 7. Find `wakfu_chat.log`
 
-  Or search under your user profile first (faster):
-    Get-ChildItem "$env:USERPROFILE" -Recurse -File -Filter wakfu_chat.log -ErrorAction SilentlyContinue |
-      Select-Object FullName, LastWriteTime, Length
+### Common locations:
 
-Once found, paste the full path into **Chat Log Path** (or use **Browse…**).
-If the file picker complains “The file name is not valid”, change the filter to **All files (*.*)** and select `wakfu_chat.log`.
-Click **Save**, then **close and re-open** the app.
+**Steam**
 
---------------------------------------------------------------
-H) Test
---------------------------------------------------------------
-In the game, type a line in the **General** channel (or force it with /s):
+```
+C:\Program Files (x86)\Steam\steamapps\common\Wakfu\preferences\logs\wakfu_chat.log
+```
+
+**Other installs**
+Search using PowerShell:
+
+```
+Get-ChildItem "$env:USERPROFILE" -Recurse -Filter wakfu_chat.log -ErrorAction SilentlyContinue
+```
+
+---
+
+## 8. Configure
+
+* Open app → Settings
+* Set **Chat Log Path**
+* Restart app
+
+---
+
+## 9. Test
+
+In-game:
+
+```
 /s hello translator test
+```
 
-You should see the translation appear in the app window.
+---
 
-Note: Some builds only process the **[General]** channel. Messages in **[Group]/[Local]/[Recruitment]** may not be translated unless the filter is expanded in code.
+## ⚠️ Notes
 
---------------------------------------------------------------
-I) Common errors (very brief)
---------------------------------------------------------------
-• ModuleNotFoundError (argostranslate/PyQt5):
-  Install inside the venv and run with:
-    & ".\.venv311\Scripts\python.exe" .\main.py
+* Some builds only translate **[General] channel**
+* Use `/s` if needed
 
-• PSSecurityException when activating venv:
-  Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+---
 
-• “The file name is not valid” when choosing the log:
-  Switch the file filter to **All files (*.*)** and select `wakfu_chat.log`.
+## 🛠 Common Issues
 
-• No translation in Group/Local:
-  Some builds only parse **[General]**. Try `/s` or widen the channel regex in code.
+* **Module not found** → install inside venv
+* **Execution policy error** → use `Set-ExecutionPolicy`
+* **Invalid file name** → switch to *All files (.)*
 
-End.
-"""
-path = "/mnt/data/QUICKSTART_Wakfu_Translator_EN.txt"
-with open(path, "w", encoding="utf-8") as f:
-    f.write(content)
+---
 
-path
+Done 🚀
