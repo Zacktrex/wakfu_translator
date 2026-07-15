@@ -20,7 +20,22 @@ MAX_TRANSLATION_CACHE_SIZE = 1000  # Maximum cached translations
 MAX_TRANSLATED_LINES = 1000  # Maximum deque size for translated lines tracking
 
 # Language Support
-SUPPORTED_LANGUAGES = ["en", "fr", "es", "de", "ja", "ko", "zh", "ru", "it", "pt"]
+# Updated to only include the provided set.
+SUPPORTED_LANGUAGES = [
+    "ar",  # Arabic
+    "zh",  # Chinese
+    "en",  # English
+    "fr",  # French
+    "de",  # German
+    "hi",  # Hindi
+    "it",  # Italian
+    "ja",  # Japanese
+    "pl",  # Polish
+    "pt",  # Portuguese
+    "tr",  # Turkish
+    "ru",  # Russian
+    "es",  # Spanish
+]
 DEFAULT_TARGET_LANGUAGE = "en"
 DEFAULT_SOURCE_LANGUAGE = "en"
 
